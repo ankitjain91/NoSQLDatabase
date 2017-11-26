@@ -4,9 +4,11 @@ import BloomFilterUtils.MurmurHash;
 
 import java.io.*;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static SSTablesImpl.Globals.inMemTables;
+import static java.lang.Math.min;
 import static java.util.Arrays.*;
 
 public class Table
@@ -16,11 +18,13 @@ public class Table
     private Map<String, ArrayList<ArrayList<String>>> cols;
     private Properties prop;
     private ArrayList<String> columnNames;
+    private Map<String,  Map<String, String>> cacheMap;
 
     public Table()
     {
         this.cols = new HashMap<>();
         this.prop = new Properties();
+        this.cacheMap = new HashMap<>();
     }
 
     public void setTableName(String tableName)
@@ -32,6 +36,47 @@ public class Table
     {
         this.primaryKey = primaryKey;
     }
+
+    public static String compress(String string) {
+
+        if (string == null || string.length() == 0) {
+            return null;
+        }
+        try{
+            ByteArrayOutputStream obj=new ByteArrayOutputStream();
+            GZIPOutputStream gzip = new GZIPOutputStream(obj);
+            gzip.write(string.getBytes("UTF-8"));
+            gzip.close();
+            String outStr = obj.toString("UTF-8");
+            //System.out.println("Output String length : " + outStr.length());
+            //return obj.toByteArray();
+            return new String(Base64.getEncoder().encode(obj.toByteArray()));
+        }catch(Exception ex){
+
+        }
+        return null;
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public static String decompress(String st) {
+        try{
+            byte[] str = Base64.getDecoder().decode(st);
+            GZIPInputStream gis = new GZIPInputStream(new ByteArrayInputStream(str));
+            BufferedReader bf = new BufferedReader(new InputStreamReader(gis, "UTF-8"));
+            String outStr = "";
+            String line;
+            while ((line=bf.readLine())!=null) {
+                outStr += line;
+            }
+            //System.out.println("Output String lenght : " + outStr.length());
+            //byte[] data= Base64decode(s);
+            return outStr;
+        }catch(Exception ex){
+            System.out.println("Error is : " + ex.getMessage());
+        }
+        return null;
+    }
+
 
     public static void createTable(ArrayList<String> columnNames, String primaryKey, String tableName)
     {
@@ -56,9 +101,10 @@ public class Table
         for(int i = 0; i < columnNames.size(); i++)
         {
             list = new ArrayList<>();
-            list.add(columnValues.get(i));
+            list.add(compress(columnValues.get(i)));
             list.add(System.currentTimeMillis()+"");
             list.add("N"); // Always N for insert
+
             this.cols.get(columnNames.get(i)).add(list);
         }
 
@@ -420,9 +466,29 @@ public class Table
         return res;
     }
 
-    public Map<String, String > read (ArrayList<String> columns, String primaryKey)
-    {
+    private Map<String, String > read (ArrayList<String> columns, String primaryKey) throws IOException {
         Map<String,String> res = new HashMap<>();
+        Map<String , String > m = this.cacheMap.get(decompress(primaryKey));
+        if(m != null && (m.size() >= columns.size()))
+        {
+            for(int i = 0; i < columns.size(); i++)
+            {
+                if(m.containsKey(columns.get(i)))
+                {
+                    res.put(columns.get(i), m.get(columns.get(i)));
+                    if(res.size() == columns.size())
+                    {
+                        return res;
+                    }
+                }
+                else {
+                    res.clear();
+                    break;
+                }
+            }
+        }
+
+
         ArrayList<ArrayList<String>> pkList = this.cols.get(this.primaryKey);
         boolean exists = false;
 
@@ -453,7 +519,6 @@ public class Table
             {
                 if(! res.containsKey(columns.get(i)))
                 {
-
                     left.add(columns.get(i));
                 }
             }
@@ -465,9 +530,31 @@ public class Table
             }
         }
         System.out.println("columns = [" + columns + "], primaryKey = [" + primaryKey + "]");
+        for (String key: res.keySet())
+        {
+            res.put(key,decompress(res.get(key)));
+        }
+
+        this.cacheMap.put(decompress(primaryKey), res);
         return res;
     }
 
+    public Map<String, String > paginateAndRead(ArrayList<String> columns, String primaryKey) throws IOException {
+        try {
+            populateCache(columns);
+            return read(columns, primaryKey);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    private void populateCache(ArrayList<String> columns) throws IOException {
+        ArrayList<String> pkList = getAllPrimaryKeys();
+        for(int  i = 0; i < min(pkList.size(), 10); i++)
+        {
+            read(columns, pkList.get(i));
+        }
+    }
     public void merge() throws IOException {
         ArrayList<String> primaryKeyList = new ArrayList<>();
         ArrayList<String> tableNames = new ArrayList<>();
@@ -560,5 +647,60 @@ public class Table
             index.delete();
         }
         t.flushTable();
+    }
+
+    public static Map<String, Map<String, String>> joinTable(String table1, String table2, ArrayList<String> columnList1, ArrayList<String> columnList2) throws IOException {
+        Table t1 = Globals.inMemTables.get(table1);
+        Table t2 = Globals.inMemTables.get(table2);
+        ArrayList<String> pKList1 = t1.getAllPrimaryKeys();
+        ArrayList<String> pKList2 = t2.getAllPrimaryKeys();
+
+        List<String> commonPKeys = new ArrayList<String>(pKList1);
+        commonPKeys.retainAll(pKList2);
+        Map<String, Map<String, String>> result = new HashMap<>();
+        Map<String,String> t1Res;
+
+        for (String key: commonPKeys)
+        {
+            t1Res = (t1.read(columnList1, key));
+            t1Res.putAll((t2.read(columnList2, key)));
+            result.put(decompress(key), t1Res);
+        }
+        return result;
+    }
+
+    public ArrayList<String> getAllPrimaryKeys() throws IOException {
+        ArrayList<String> primaryKeyList = new ArrayList<>();
+        ArrayList<String> tableNames = new ArrayList<>();
+        Set<Object> keys;
+        Map<String, String> res;
+        Table t = Globals.inMemTables.get(this.tableName);
+
+        for(String table:Globals.flushedTables)
+        {
+            if(table.contains(this.tableName))
+            {
+                tableNames.add(table);
+            }
+        }
+        Collections.sort(tableNames);
+        Collections.reverse(tableNames);
+
+        for(String table:tableNames) {
+            if (table.contains(this.tableName)) {
+                Properties properties = new Properties();
+                InputStream inputStream = new FileInputStream(table + "/" + this.tableName + ".properties");
+                properties.load(inputStream);
+                inputStream.close();
+                keys = properties.keySet();
+                for (Object k : keys) {
+                    String primaryKey = (String) k;
+                    if (!primaryKeyList.contains(primaryKey)) {
+                        primaryKeyList.add(primaryKey);
+                    }
+                }
+            }
+        }
+        return primaryKeyList;
     }
 }
