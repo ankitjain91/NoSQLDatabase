@@ -83,9 +83,7 @@ public class Main {
 
         if(query.contains("*"))
         {
-            //cols = t.columnNames;
-            String primaryKey = splited[splited.length - 1];
-            print(t.paginateAndRead(t.columnNames,primaryKey));
+            print(t.readAll());
         }
         else
         {
@@ -132,23 +130,37 @@ public class Main {
         {
             createTable(Queries.CREATE_TABLE1);
             insertTable(Queries.INSERT_TABLE1);
+            Table t = Globals.inMemTables.get("Details");
+            t.flushTable();
+
             createTable(Queries.CREATE_TABLE2);
             insertTable(Queries.INSERT_TABLE2);
+
+            t = Globals.inMemTables.get("Cartoons");
+            t.flushTable();
+
             updateTable(Queries.UPDATE_TABLE);
             deleteTable(Queries.DELETE_TABLE);
+            t = Globals.inMemTables.get("Details");
+            t.flushTable();
+
             readTable(Queries.READ_ALL_TABLE);
-            //readTable(Queries.READ_ALL_TABLE);
             joinTable(Queries.JOIN_TABLE);
 
             for(String key : Globals.inMemTables.keySet())
             {
-                Table t = Globals.inMemTables.get(key);
-                t.flushTable();
-                t.merge();
+                t = Globals.inMemTables.get(key);
+                synchronized (t)
+                {
+                    t.merge();
+                }
             }
+
+
         }
         catch(Exception ex)
         {
+            ex.printStackTrace();
         }
     }
 }

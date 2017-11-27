@@ -466,8 +466,8 @@ public class Table
         return res;
     }
 
-    public Map<String, String> readAll() throws IOException {
-        //flushTable();
+    public Map<String, String> readAll() throws IOException
+    {
         ArrayList<String> pkList = getAllPrimaryKeys();
         Map<String, String> result = new HashMap<>();
         for (String key: pkList)
