@@ -130,6 +130,8 @@ public class Main {
         {
             createTable(Queries.CREATE_TABLE1);
             insertTable(Queries.INSERT_TABLE1);
+            insertTable(Queries.INSERT_TABLE3);
+            insertTable(Queries.INSERT_TABLE4);
             Table t = Globals.inMemTables.get("Details");
             t.flushTable();
 
@@ -139,10 +141,11 @@ public class Main {
             t = Globals.inMemTables.get("Cartoons");
             t.flushTable();
 
-            updateTable(Queries.UPDATE_TABLE);
+            //updateTable(Queries.UPDATE_TABLE);
             deleteTable(Queries.DELETE_TABLE);
             t = Globals.inMemTables.get("Details");
             t.flushTable();
+
 
             readTable(Queries.READ_ALL_TABLE);
             joinTable(Queries.JOIN_TABLE);
@@ -160,7 +163,7 @@ public class Main {
         }
         catch(Exception ex)
         {
-            ex.printStackTrace();
+            //ex.printStackTrace();
         }
     }
 }

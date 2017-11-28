@@ -38,43 +38,86 @@ public class Table
     }
 
     public static String compress(String string) {
-//
-//        if (string == null || string.length() == 0) {
-//            return null;
-//        }
-//        try{
-//            ByteArrayOutputStream obj=new ByteArrayOutputStream();
-//            GZIPOutputStream gzip = new GZIPOutputStream(obj);
-//            gzip.write(string.getBytes("UTF-8"));
-//            gzip.close();
-//            String outStr = obj.toString("UTF-8");
-//            //System.out.println("Output String length : " + outStr.length());
-//            //return obj.toByteArray();
-//            return new String(Base64.getEncoder().encode(obj.toByteArray()));
-//        }catch(Exception ex){
-//
-//        }
+
+        if (string == null || string.length() == 0) {
+            return null;
+        }
+        try{
+            ByteArrayOutputStream obj=new ByteArrayOutputStream();
+            GZIPOutputStream gzip = new GZIPOutputStream(obj);
+            gzip.write(string.getBytes("UTF-8"));
+            gzip.close();
+            String outStr = obj.toString("UTF-8");
+
+        }catch(Exception ex){
+
+        }
         return string;
         //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     public static String decompress(String st) {
-//        try{
-//            byte[] str = Base64.getDecoder().decode(st);
-//            GZIPInputStream gis = new GZIPInputStream(new ByteArrayInputStream(str));
-//            BufferedReader bf = new BufferedReader(new InputStreamReader(gis, "UTF-8"));
-//            String outStr = "";
-//            String line;
-//            while ((line=bf.readLine())!=null) {
-//                outStr += line;
-//            }
-//
-//            return outStr;
-//        }catch(Exception ex){
-//            System.out.println("Error is : " + ex.getMessage());
-//        }
-//        return null;
+        try{
+            byte[] str = Base64.getDecoder().decode(st);
+            GZIPInputStream gis = new GZIPInputStream(new ByteArrayInputStream(str));
+            BufferedReader bf = new BufferedReader(new InputStreamReader(gis, "UTF-8"));
+            String outStr = "";
+            String line;
+            while ((line=bf.readLine())!=null) {
+                outStr += line;
+            }
+
+            return outStr;
+        }catch(Exception ex){
+        }
         return st;
+    }
+    public static void commpressDictObject(String columnValue)
+    {
+        Map<Object, Object> dictionary = null;
+        if(dictionary.containsKey(columnValue))
+        {
+            Map<Object, Object> compressedDict;
+            compressedDict = null;
+            if(!compressedDict.containsKey(columnValue))
+            {
+                int val = (int) dictionary.get(columnValue);
+                val = val+1;
+                dictionary.put(columnValue, val);
+                if(val > 5)
+                {
+                    int globalCount = 0;
+                    compressedDict.put(columnValue, globalCount);
+                    globalCount = globalCount + 1;
+                }
+            }
+        }
+        else
+        {
+            dictionary.put(columnValue, 1);
+        }
+    }
+
+    public static int CompressToDict(String columnValue){
+        Map<Object, Object> compressedDict = null;
+        if(compressedDict.containsKey(columnValue))
+        {
+            int n = (int) compressedDict.get(columnValue);
+            return n;
+        }
+        return 0;
+    }
+
+    public static String dictionaryDecompression(int val){
+        String key = "";
+        WeakHashMap<Object, Object> dictionaryCompressionObject = null;
+        for (Map.Entry<Object, Object> map : dictionaryCompressionObject.entrySet()) {
+            if (val == (int) map.getValue()) {
+                key = (String) map.getKey();
+            }
+        }
+        return key;
+
     }
 
 
@@ -179,7 +222,7 @@ public class Table
         }
         catch(Exception ex)
         {
-            //ex.printStackTrace();
+
         }
 
     }
@@ -437,7 +480,7 @@ public class Table
                     }
                     catch (Exception ex)
                     {
-                        ex.printStackTrace();
+
                     }
                 }
                 else
@@ -458,7 +501,7 @@ public class Table
                     }
                     catch (Exception ex)
                     {
-                        //ex.printStackTrace();
+
                     }
                 }
             }
@@ -469,12 +512,21 @@ public class Table
     public Map<String, String> readAll() throws IOException
     {
         ArrayList<String> pkList = getAllPrimaryKeys();
-        Map<String, String> result = new HashMap<>();
+        Map<String, String> res = new HashMap<>();
+        Map<String, String> result;
         for (String key: pkList)
         {
-                result.putAll(read(this.columnNames, key));
+            result = new HashMap<>(read(this.columnNames, key));
+            System.out.println(this.primaryKey +" = "+key);
+            for (String reskey: result.keySet())
+            {
+                System.out.println(reskey + " = "+ result.get(reskey));
+            }
+            System.out.println("------------------------------");
+
+            //res.putAll(new HashMap<>(read(this.columnNames, k
         }
-        return result;
+        return res;
     }
 
     private Map<String, String > read (ArrayList<String> columns, String primaryKey) throws IOException {
@@ -554,7 +606,7 @@ public class Table
             populateCache(columns);
             return read(columns, primaryKey);
         } catch (IOException e) {
-            e.printStackTrace();
+
         }
         return null;
     }
