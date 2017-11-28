@@ -174,7 +174,7 @@ public class Table
                 colProps = "";
                 for (String colName:this.cols.keySet())
                 {
-                    if ((colName != this.primaryKey))
+                    if (!(colName.equals(this.primaryKey)))
                     {
 
                         String fName = colName + "_" + this.cols.get(this.primaryKey).get(count).get(0) + ".properties";
@@ -357,7 +357,7 @@ public class Table
 
                 for(int i = 0; i < this.columnNames.size(); i++)
                 {
-                    if(this.columnNames.get(i) != this.primaryKey)
+                    if(!(this.columnNames.get(i).equals( this.primaryKey)))
                     {
                         if(columnNames.contains(this.columnNames.get(i)) )
                         {
@@ -617,7 +617,7 @@ public class Table
             read(columns, pkList.get(i));
         }
     }
-    public synchronized void merge() throws IOException {
+    public void merge() throws IOException {
         ArrayList<String> primaryKeyList = new ArrayList<>();
         ArrayList<String> tableNames = new ArrayList<>();
         Set<Object> keys;

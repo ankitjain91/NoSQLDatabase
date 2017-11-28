@@ -118,6 +118,11 @@ public class Main {
 
     static void print(Map<String, String> m)
     {
+        if(m == null)
+        {
+            return;
+        }
+
         for(String key : m.keySet())
         {
             System.out.println(key + " - " + m.get(key));
@@ -141,7 +146,7 @@ public class Main {
             t = Globals.inMemTables.get("Cartoons");
             t.flushTable();
 
-            //updateTable(Queries.UPDATE_TABLE);
+            updateTable(Queries.UPDATE_TABLE);
             deleteTable(Queries.DELETE_TABLE);
             t = Globals.inMemTables.get("Details");
             t.flushTable();
@@ -163,7 +168,7 @@ public class Main {
         }
         catch(Exception ex)
         {
-            //ex.printStackTrace();
+            ex.printStackTrace();
         }
     }
 }
